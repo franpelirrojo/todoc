@@ -28,19 +28,27 @@ static struct task_t *task_list = NULL;
 
 void print_tasks(struct task_t *task_list) {
   for (int i = 0; i < task_count; i++) {
-    printf("%d. %s | %s\n", i + 1, task_list[i].title, task_list[i].content);
+    if (task_list[i].title != NULL) {
+      if (task_list[i].content != NULL) {
+        printf("%d. %s | %s\n", i + 1, task_list[i].title,
+               task_list[i].content);
+      } else {
+        printf("%d. %s \n", i + 1, task_list[i].title);
+      }
+    }
   }
 }
 
-void delete_task(struct task_t *task) {
-  if (task->title != NULL) {
-    free(task->title);
-    task->title = NULL;
+void delete_task(int index) {
+  struct task_t task = task_list[index];
+  if (task.title != NULL) {
+    free(task.title);
+    task.title = NULL;
   }
 
-  if (task->content != NULL) {
-    free(task->content);
-    task->content = NULL;
+  if (task.content != NULL) {
+    free(task.content);
+    task.content = NULL;
   }
 }
 
@@ -63,13 +71,17 @@ bool add_task(char *title, char *content) {
     return false;
   }
 
-  task_list[task_count].content = strdup(content);
-  if (task_list[task_count].content == NULL) {
-    perror("strdup");
-    printf("No se puedo guardar el contenido de la tarea.\n");
-    free(task_list[task_count].title);
-    task_list[task_count].title = NULL;
-    return false;
+  if (content != NULL) {
+    task_list[task_count].content = strdup(content);
+    if (task_list[task_count].content == NULL) {
+      perror("strdup");
+      printf("No se puedo guardar el contenido de la tarea.\n");
+      free(task_list[task_count].title);
+      task_list[task_count].title = NULL;
+      return false;
+    }
+  } else {
+    task_list[task_count].content = NULL;
   }
 
   task_count++;
@@ -113,8 +125,8 @@ int init_data() {
     for (int i = 0; i < header.count; i++) {
       unsigned long size_title;
       unsigned long size_content;
-      char *title;
-      char *content;
+      char *title = NULL;
+      char *content = NULL;
 
       int bread = read(fd, &size_title, sizeof(unsigned long));
       if (bread == -1) {
@@ -148,21 +160,23 @@ int init_data() {
         return -1;
       }
 
-      content = malloc(size_content + 1);
-      if (content == NULL) {
-        perror("Error al asignar memoria para el título");
-        close(fd);
-        return -1;
-      }
+      if (size_content != 0) {
+        content = malloc(size_content + 1);
+        if (content == NULL) {
+          perror("Error al asignar memoria para el título");
+          close(fd);
+          return -1;
+        }
 
-      bread = read(fd, content, size_content);
-      if (bread != size_content) {
-        perror("Error al leer el título");
-        close(fd);
-        return -1;
-      }
+        bread = read(fd, content, size_content);
+        if (bread != size_content) {
+          perror("Error al leer el título");
+          close(fd);
+          return -1;
+        }
 
-      content[size_content] = '\0';
+        content[size_content] = '\0';
+      }
 
       if (!add_task(title, content)) {
         printf("No se pudo cargar la tarea %s | %s", title, content);
@@ -202,17 +216,17 @@ int save_data() {
     unsigned long size_content =
         task_list[i].content != NULL ? strlen(task_list[i].content) : 0;
 
-    if (write(fd, &size_title, sizeof(unsigned long)) == -1) {
-      perror("write");
-      close(fd);
-      return -1;
-    }
+      if (write(fd, &size_title, sizeof(unsigned long)) == -1) {
+        perror("write");
+        close(fd);
+        return -1;
+      }
 
-    if (write(fd, task_list[i].title, size_title) == -1) {
-      perror("write");
-      close(fd);
-      return -1;
-    }
+      if (write(fd, task_list[i].title, size_title) == -1) {
+        perror("write");
+        close(fd);
+        return -1;
+      }
 
     if (write(fd, &size_content, sizeof(unsigned long)) == -1) {
       perror("write");
@@ -220,10 +234,12 @@ int save_data() {
       return -1;
     }
 
-    if (write(fd, task_list[i].content, size_content) == -1) {
-      perror("write");
-      close(fd);
-      return -1;
+    if (task_list[i].content != 0) {
+      if (write(fd, task_list[i].content, size_content) == -1) {
+        perror("write");
+        close(fd);
+        return -1;
+      }
     }
   }
 
@@ -232,11 +248,6 @@ int save_data() {
 }
 
 int main(int argc, char *argv[]) {
-  if (argc < 2) {
-    printf("Faltan argumentos.\n");
-    return -1;
-  }
-
   task_list = malloc(sizeof(struct task_t) * task_list_size);
 
   if (init_data() == -1) {
@@ -244,12 +255,14 @@ int main(int argc, char *argv[]) {
     return -1;
   }
 
-  if (strcmp(argv[1], "-l") == 0) {
+  if (argc < 2) {
     print_tasks(task_list);
   } else if (strcmp(argv[1], "-t") == 0) {
-    if (argc < 4) {
+    if (argc < 3) {
       printf(
           "-t requiere un nombre para la tarea y una descripción opcional.\n");
+    } else if (argc < 4) {
+      add_task(argv[2], NULL);
     } else {
       add_task(argv[2], argv[3]);
     }
@@ -257,19 +270,17 @@ int main(int argc, char *argv[]) {
     if (argc < 3) {
       printf("-d requiere un identificador.\n");
     } else {
-      long task_id = strtol(argv[2], NULL, 10);
-      delete_task(&task_list[task_id]);
+      int task_id = (int)strtol(argv[2], NULL, 10);
+      delete_task(task_id - 1);
     }
   }
 
   if (save_data() == -1) {
     printf("No se ha podido guardar el estado correctamente.\n");
-  } else {
-    printf("Estado guardado correctamente.\n");
   }
 
   for (int i = 0; i < task_count; i++) {
-    delete_task(&task_list[i]);
+    delete_task(i);
   }
   free(task_list);
 
