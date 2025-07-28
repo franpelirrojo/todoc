@@ -28,28 +28,26 @@ static struct task_t *task_list = NULL;
 
 void print_tasks(struct task_t *task_list) {
   for (int i = 0; i < task_count; i++) {
-    if (task_list[i].title != NULL) {
-      if (task_list[i].content != NULL) {
-        printf("%d. %s | %s\n", i + 1, task_list[i].title,
-               task_list[i].content);
-      } else {
-        printf("%d. %s \n", i + 1, task_list[i].title);
-      }
+    if (task_list[i].content != NULL) {
+      printf("%d. %s | %s\n", i + 1, task_list[i].title, task_list[i].content);
+    } else {
+      printf("%d. %s \n", i + 1, task_list[i].title);
     }
   }
 }
 
-void delete_task(int index) {
-  struct task_t task = task_list[index];
-  if (task.title != NULL) {
-    free(task.title);
-    task.title = NULL;
+void delete_task(int index) { // TODO: liberar esto bien
+  free(task_list[index].title);
+  task_list[index].title = NULL;
+  free(task_list[index].content);
+  task_list[index].content = NULL;
+
+  for (int i = index; i < task_count; i++) {
+    task_list[i].title = task_list[i + 1].title;
+    task_list[i].content = task_list[i + 1].content;
   }
 
-  if (task.content != NULL) {
-    free(task.content);
-    task.content = NULL;
-  }
+  task_count--;
 }
 
 bool add_task(char *title, char *content) {
@@ -216,17 +214,17 @@ int save_data() {
     unsigned long size_content =
         task_list[i].content != NULL ? strlen(task_list[i].content) : 0;
 
-      if (write(fd, &size_title, sizeof(unsigned long)) == -1) {
-        perror("write");
-        close(fd);
-        return -1;
-      }
+    if (write(fd, &size_title, sizeof(unsigned long)) == -1) {
+      perror("write");
+      close(fd);
+      return -1;
+    }
 
-      if (write(fd, task_list[i].title, size_title) == -1) {
-        perror("write");
-        close(fd);
-        return -1;
-      }
+    if (write(fd, task_list[i].title, size_title) == -1) {
+      perror("write");
+      close(fd);
+      return -1;
+    }
 
     if (write(fd, &size_content, sizeof(unsigned long)) == -1) {
       perror("write");
@@ -245,6 +243,14 @@ int save_data() {
 
   close(fd);
   return 0;
+}
+
+void free_all() {
+  for (int i = 0; i < task_count; i++) {
+    free(task_list[i].title);
+    free(task_list[i].content);
+  }
+  free(task_list);
 }
 
 int main(int argc, char *argv[]) {
@@ -279,10 +285,7 @@ int main(int argc, char *argv[]) {
     printf("No se ha podido guardar el estado correctamente.\n");
   }
 
-  for (int i = 0; i < task_count; i++) {
-    delete_task(i);
-  }
-  free(task_list);
+  free_all();
 
   return 0;
 }
