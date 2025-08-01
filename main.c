@@ -294,7 +294,7 @@ time_t parsedate(char *date) {
   int counter = 0;
   char digit[4];
   int digitcounter = 0;
-  int fecha[3];
+  int fecha[] = {-1, -1, -1};
   int fechacounter = 0;
   bool end = false;
 
@@ -319,6 +319,19 @@ time_t parsedate(char *date) {
       counter++;
     }
   }
+
+  new_date = time(NULL);
+  struct tm *broke_date = localtime(&new_date);
+  if (fecha[0] != -1) {
+    broke_date->tm_mday = fecha[0];
+  }
+  if (fecha[1] != -1) {
+    broke_date->tm_mon = fecha[1] - 1;
+  }
+  if (fecha[2] != -1) {
+    broke_date->tm_year = fecha[2] - 1900;
+  }
+  new_date = mktime(broke_date);
 
   return new_date;
 }
