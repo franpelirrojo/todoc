@@ -260,7 +260,7 @@ int save_data() {
       }
     }
 
-    if (write(fd, &task_list[i].date, sizeof (time_t)) == -1) {
+    if (write(fd, &task_list[i].date, sizeof(time_t)) == -1) {
       perror("write");
       close(fd);
       return -1;
@@ -331,36 +331,38 @@ int main(int argc, char *argv[]) {
     return -1;
   }
 
-  if (argc < 2) {
+  switch (argc) {
+  case 1:
     print_tasks(task_list);
-  } else if (strcmp(argv[1], "-t") == 0) {
-    if (argc < 3) {
-      printf("-t requiere un nombre para la tarea y una descripción "
-             "opcional.\n Igualmente con la flag -d puede añadirse una fecha "
-             "cómo recordatorio.");
-    } else if (argc < 4) {
+    break;
+  case 3:
+    if (strcmp(argv[1], "-t") == 0) {
       create_task(argv[2], NULL, -1);
-    } else if (strcmp(argv[3], "-d") == 0) {
-      time_t task_time;
-      if (argc < 5) {
-        task_time = parsedate(NULL);
-      } else {
-        task_time = parsedate(argv[4]);
-      }
-      create_task(argv[2], NULL, task_time);
-    } else if (strcmp(argv[3], "-d") == 0) {
-      // TODO: con comentario también
-    } else {
-      // TODO: Permitir varios
-      create_task(argv[2], argv[3], -1);
-    }
-  } else if (strcmp(argv[1], "-r") == 0) {
-    if (argc < 3) {
-      printf("-r requiere un identificador.\n");
-    } else {
-      int task_id = (int)strtol(argv[2], NULL, 10);
+    } else if (strcmp(argv[1], "-r") == 0) {
+      int task_id = atoi(argv[2]);
       delete_task(task_id - 1);
     }
+    break;
+  case 4:
+    if (strcmp(argv[3], "-d") == 0) {
+      create_task(argv[2], NULL, parsedate(NULL));
+    } else {
+      create_task(argv[2], argv[3], -1); // TODO: Permitir varios
+    }
+    break;
+  case 5:
+    if (strcmp(argv[4], "-d") == 0) {
+      create_task(argv[2], argv[3], parsedate(NULL));
+    } else {
+      create_task(argv[2], NULL, parsedate(argv[4]));
+    }
+    break;
+  case 6:
+    create_task(argv[2], argv[3], parsedate(argv[5]));
+    break;
+  default:
+    printf("todoc -r <id>"
+           "todoc -t <titulo> <comentario> -d <dd-mm-yyyy>");
   }
 
   if (save_data() == -1) {
