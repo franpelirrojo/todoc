@@ -5,6 +5,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <time.h>
 #include <unistd.h>
 
 #define VERSION 1
@@ -19,6 +20,7 @@ struct task_file_header_t {
 struct task_t {
   char *title;
   char *content;
+  time_t date;
 };
 
 static int fd;
@@ -27,16 +29,24 @@ static unsigned short task_list_size = DEFAULT_SIZE;
 static struct task_t *task_list = NULL;
 
 void print_tasks(struct task_t *task_list) {
+  char time[80];
   for (int i = 0; i < task_count; i++) {
     if (task_list[i].content != NULL) {
-      printf("%d. %s | %s\n", i + 1, task_list[i].title, task_list[i].content);
+      printf("%d. %s | %s", i + 1, task_list[i].title, task_list[i].content);
     } else {
-      printf("%d. %s \n", i + 1, task_list[i].title);
+      printf("%d. %s", i + 1, task_list[i].title);
+    }
+
+    if (task_list[i].date != -1) {
+      strftime(time, sizeof(time), "%F", localtime(&task_list[i].date));
+      printf(" %s\n", time);
+    } else {
+      printf("\n");
     }
   }
 }
 
-void delete_task(int index) { // TODO: liberar esto bien
+void delete_task(int index) {
   free(task_list[index].title);
   task_list[index].title = NULL;
   free(task_list[index].content);
@@ -50,7 +60,7 @@ void delete_task(int index) { // TODO: liberar esto bien
   task_count--;
 }
 
-bool add_task(char *title, char *content) {
+bool create_task(char *title, char *content, time_t date) {
   if (task_count >= task_list_size) {
     struct task_t *temp = realloc(
         task_list, sizeof(struct task_t) * (task_list_size + DEFAULT_SIZE));
@@ -81,6 +91,8 @@ bool add_task(char *title, char *content) {
   } else {
     task_list[task_count].content = NULL;
   }
+
+  task_list[task_count].date = date;
 
   task_count++;
   return true;
@@ -125,6 +137,7 @@ int init_data() {
       unsigned long size_content;
       char *title = NULL;
       char *content = NULL;
+      time_t date;
 
       int bread = read(fd, &size_title, sizeof(unsigned long));
       if (bread == -1) {
@@ -168,7 +181,7 @@ int init_data() {
 
         bread = read(fd, content, size_content);
         if (bread != size_content) {
-          perror("Error al leer el título");
+          perror("Error al leer el contenido.");
           close(fd);
           return -1;
         }
@@ -176,7 +189,14 @@ int init_data() {
         content[size_content] = '\0';
       }
 
-      if (!add_task(title, content)) {
+      bread = read(fd, &date, sizeof(time_t));
+      if (bread != sizeof(time_t)) {
+        perror("Error al leer la fecha.");
+        close(fd);
+        return -1;
+      }
+
+      if (!create_task(title, content, date)) {
         printf("No se pudo cargar la tarea %s | %s", title, content);
       }
 
@@ -239,6 +259,12 @@ int save_data() {
         return -1;
       }
     }
+
+    if (write(fd, &task_list[i].date, sizeof (time_t)) == -1) {
+      perror("write");
+      close(fd);
+      return -1;
+    }
   }
 
   close(fd);
@@ -253,6 +279,50 @@ void free_all() {
   free(task_list);
 }
 
+time_t parsedate(char *date) {
+  time_t new_date;
+
+  if (date == NULL) {
+    new_date = time(NULL);
+    struct tm *broke_date = localtime(&new_date);
+    broke_date->tm_mday++;
+    new_date = mktime(broke_date);
+
+    return new_date;
+  }
+
+  int counter = 0;
+  char digit[4];
+  int digitcounter = 0;
+  int fecha[3];
+  int fechacounter = 0;
+  bool end = false;
+
+  while (!end) {
+    switch (date[counter]) {
+    case '\0':
+      fecha[fechacounter] = atoi(digit);
+      end = true;
+      break;
+    case '-':
+      fecha[fechacounter] = atoi(digit);
+      digitcounter = 0;
+      counter++;
+      fechacounter++;
+      break;
+    default:
+      if (date[counter] >= '0' && date[counter] <= '9') {
+        digit[digitcounter] = date[counter];
+      }
+
+      digitcounter++;
+      counter++;
+    }
+  }
+
+  return new_date;
+}
+
 int main(int argc, char *argv[]) {
   task_list = malloc(sizeof(struct task_t) * task_list_size);
 
@@ -265,16 +335,28 @@ int main(int argc, char *argv[]) {
     print_tasks(task_list);
   } else if (strcmp(argv[1], "-t") == 0) {
     if (argc < 3) {
-      printf(
-          "-t requiere un nombre para la tarea y una descripción opcional.\n");
+      printf("-t requiere un nombre para la tarea y una descripción "
+             "opcional.\n Igualmente con la flag -d puede añadirse una fecha "
+             "cómo recordatorio.");
     } else if (argc < 4) {
-      add_task(argv[2], NULL);
+      create_task(argv[2], NULL, -1);
+    } else if (strcmp(argv[3], "-d") == 0) {
+      time_t task_time;
+      if (argc < 5) {
+        task_time = parsedate(NULL);
+      } else {
+        task_time = parsedate(argv[4]);
+      }
+      create_task(argv[2], NULL, task_time);
+    } else if (strcmp(argv[3], "-d") == 0) {
+      // TODO: con comentario también
     } else {
-      add_task(argv[2], argv[3]);
+      // TODO: Permitir varios
+      create_task(argv[2], argv[3], -1);
     }
-  } else if (strcmp(argv[1], "-d") == 0) {
+  } else if (strcmp(argv[1], "-r") == 0) {
     if (argc < 3) {
-      printf("-d requiere un identificador.\n");
+      printf("-r requiere un identificador.\n");
     } else {
       int task_id = (int)strtol(argv[2], NULL, 10);
       delete_task(task_id - 1);
@@ -286,6 +368,5 @@ int main(int argc, char *argv[]) {
   }
 
   free_all();
-
   return 0;
 }
