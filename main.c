@@ -1,6 +1,7 @@
 #include <asm-generic/errno-base.h>
 #include <errno.h>
 #include <fcntl.h>
+#include <locale.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -11,6 +12,8 @@
 #define VERSION 1
 #define DEFAULT_SIZE 10
 #define DATA_PATH "todoc.data"
+#define LIST_ENUMERATOR "■"
+#define LIST_SEPARATOR "»"
 
 struct task_file_header_t {
   unsigned short version;
@@ -32,9 +35,9 @@ void print_tasks(struct task_t *task_list) {
   char time[80];
   for (int i = 0; i < task_count; i++) {
     if (task_list[i].content != NULL) {
-      printf("%d. %s | %s", i + 1, task_list[i].title, task_list[i].content);
+      printf("%s %s %s %s", LIST_ENUMERATOR, task_list[i].title, LIST_SEPARATOR, task_list[i].content);
     } else {
-      printf("%d. %s", i + 1, task_list[i].title);
+      printf("%s %s", LIST_ENUMERATOR, task_list[i].title);
     }
 
     if (task_list[i].date != -1) {
