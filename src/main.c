@@ -52,6 +52,10 @@ void print_tasks(struct task_t *task_list) {
 }
 
 void delete_task(int index) {
+  if (task_count == 0) {
+    return;
+  }
+
   free(task_list[index].title);
   task_list[index].title = NULL;
   free(task_list[index].content);
