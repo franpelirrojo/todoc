@@ -1,0 +1,15 @@
+[
+  {
+    "arguments": [
+      "/usr/bin/gcc",
+      "-c",
+      "-std=gnu99",
+      "-o",
+      "todoc",
+      "./src/main.c"
+    ],
+    "directory": "/home/franpelirrojo/code/todoc",
+    "file": "/home/franpelirrojo/code/todoc/src/main.c",
+    "output": "/home/franpelirrojo/code/todoc/todoc"
+  }
+]

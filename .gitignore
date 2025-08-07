@@ -1,3 +1,7 @@
 todoc
 *.sh
 *.data
+
+.cache/
+bin/
+

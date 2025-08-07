@@ -1,17 +1,19 @@
 #include <asm-generic/errno-base.h>
 #include <errno.h>
 #include <fcntl.h>
-#include <locale.h>
+#include <limits.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
 #include <unistd.h>
+#include <sys/stat.h>
 
 #define VERSION 1
 #define DEFAULT_SIZE 10
-#define DATA_PATH "todoc.data"
+#define LOCAL_PATH ".local/share/todoc"
+#define SAVE_FILE "todoc.bin"
 #define LIST_ENUMERATOR "■"
 #define LIST_SEPARATOR "»"
 
@@ -102,12 +104,40 @@ bool create_task(char *title, char *content, time_t date) {
 }
 
 int init_data() {
-  fd = open(DATA_PATH, O_RDWR);
+  char dirpath[255];
+  char filepath[255];
+  char *home= getenv("HOME");
+  if (home != NULL) {
+    int n;
+    n = snprintf(dirpath, sizeof(dirpath), "%s/%s", home, LOCAL_PATH);
+    if (n < 0 || n > sizeof(dirpath)) {
+      perror("Se truncó el path al directorio de guardado.");
+      return -1;
+    }
+    n = snprintf(filepath, sizeof(filepath), "%s/%s", dirpath, SAVE_FILE);
+    if (n < 0 || n > sizeof(filepath)) {
+      perror("Se truncó el path al archivo de guardado.");
+      return -1;
+    }
+  } else {
+    perror("No se encontró la variable de entorno HOME.");
+    return -1;
+  }
+
+  fd = open(filepath, O_RDWR);
   if (fd == -1) {
     if (errno == ENOENT) {
-      fd = open(DATA_PATH, O_CREAT | O_RDWR, 0644);
+      if (mkdir(dirpath, 0700) == -1) {
+        if (errno != EEXIST) {
+          perror("No se puedoc crear el directorio local para guardar los datos.");
+          return -1;
+        }
+      }
+
+      
+      fd = open(filepath, O_CREAT | O_RDWR, 0644);
       if (fd == -1) {
-        perror("Error al crear el archivo de datos");
+        perror("Error al crear el archivo de datos.");
         return -1;
       }
 
@@ -211,7 +241,7 @@ int init_data() {
   return 0;
 }
 
-int save_data() {
+int save_data() { //puedo guardar toda la estructura?
   if (ftruncate(fd, 0) == -1) {
     perror("ftruncate");
     close(fd);
@@ -341,7 +371,6 @@ time_t parsedate(char *date) {
 
 int main(int argc, char *argv[]) {
   task_list = malloc(sizeof(struct task_t) * task_list_size);
-
   if (init_data() == -1) {
     free(task_list);
     return -1;
