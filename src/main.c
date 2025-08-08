@@ -35,34 +35,31 @@ static struct task_t *task_list = NULL;
 
 void print_task(struct task_t task, int counter) {
   char time[80];
-  if (task.date > today || task.date == -1) {
-    if (task.content != NULL) {
-      printf("%d %s %s %s", counter + 1, task.title, LIST_SEPARATOR,
-             task.content);
-    } else {
-      printf("%d %s", counter + 1, task.title);
-    }
+  if (task.content != NULL) {
+    printf("%d. %s %s %s", counter + 1, task.title, LIST_SEPARATOR,
+           task.content);
+  } else {
+    printf("%d. %s", counter + 1, task.title);
+  }
 
-    if (task.date != -1) {
-      strftime(time, sizeof(time), "%F", localtime(&task.date));
-      printf(" %s\n", time);
-    } else {
-      printf("\n");
-    }
+  if (task.date != -1) {
+    strftime(time, sizeof(time), "%F", localtime(&task.date));
+    printf(" %s\n", time);
+  } else {
+    printf("\n");
   }
 }
 
-void print_tasks(struct task_t *task_list) {
+void print_task_list(struct task_t *task_list) {
   for (int i = 0; i < task_count; i++) {
     print_task(task_list[i], i);
   }
 }
 
 void print_tasks_deadline(struct task_t *task_list, time_t deadline) {
-  int counter = 0;
   for (int i = 0; i < task_count; i++) {
     if (task_list[i].date > deadline || task_list[i].date == -1) {
-      print_task(task_list[i], counter++);
+      print_task(task_list[i], i);
     }
   }
 }
@@ -344,7 +341,7 @@ time_t parsedate(char *date) {
   }
 
   int counter = 0;
-  char digit[4];
+  char digit[4] = "";
   int digitcounter = 0;
   int fecha[] = {-1, -1, -1};
   int fechacounter = 0;
@@ -402,7 +399,7 @@ int main(int argc, char *argv[]) {
     break;
   case 2:
     if (strcmp(argv[1], "-l") == 0) {
-      print_tasks(task_list);
+      print_task_list(task_list);
     } else {
       printf("todoc -l"
              "todoc -r <id>"
