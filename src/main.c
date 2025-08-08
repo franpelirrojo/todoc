@@ -6,15 +6,14 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/stat.h>
 #include <time.h>
 #include <unistd.h>
-#include <sys/stat.h>
 
 #define VERSION 1
 #define DEFAULT_SIZE 10
 #define LOCAL_PATH ".local/share/todoc"
 #define SAVE_FILE "todoc.bin"
-#define LIST_ENUMERATOR "■"
 #define LIST_SEPARATOR "»"
 
 struct task_file_header_t {
@@ -29,24 +28,41 @@ struct task_t {
 };
 
 static int fd;
+static time_t today;
 static unsigned short task_count = 0;
 static unsigned short task_list_size = DEFAULT_SIZE;
 static struct task_t *task_list = NULL;
 
-void print_tasks(struct task_t *task_list) {
+void print_task(struct task_t task, int counter) {
   char time[80];
-  for (int i = 0; i < task_count; i++) {
-    if (task_list[i].content != NULL) {
-      printf("%s %s %s %s", LIST_ENUMERATOR, task_list[i].title, LIST_SEPARATOR, task_list[i].content);
+  if (task.date > today || task.date == -1) {
+    if (task.content != NULL) {
+      printf("%d %s %s %s", counter + 1, task.title, LIST_SEPARATOR,
+             task.content);
     } else {
-      printf("%s %s", LIST_ENUMERATOR, task_list[i].title);
+      printf("%d %s", counter + 1, task.title);
     }
 
-    if (task_list[i].date != -1) {
-      strftime(time, sizeof(time), "%F", localtime(&task_list[i].date));
+    if (task.date != -1) {
+      strftime(time, sizeof(time), "%F", localtime(&task.date));
       printf(" %s\n", time);
     } else {
       printf("\n");
+    }
+  }
+}
+
+void print_tasks(struct task_t *task_list) {
+  for (int i = 0; i < task_count; i++) {
+    print_task(task_list[i], i);
+  }
+}
+
+void print_tasks_deadline(struct task_t *task_list, time_t deadline) {
+  int counter = 0;
+  for (int i = 0; i < task_count; i++) {
+    if (task_list[i].date > deadline || task_list[i].date == -1) {
+      print_task(task_list[i], counter++);
     }
   }
 }
@@ -110,7 +126,7 @@ bool create_task(char *title, char *content, time_t date) {
 int init_data() {
   char dirpath[255];
   char filepath[255];
-  char *home= getenv("HOME");
+  char *home = getenv("HOME");
   if (home != NULL) {
     int n;
     n = snprintf(dirpath, sizeof(dirpath), "%s/%s", home, LOCAL_PATH);
@@ -133,12 +149,12 @@ int init_data() {
     if (errno == ENOENT) {
       if (mkdir(dirpath, 0700) == -1) {
         if (errno != EEXIST) {
-          perror("No se puedoc crear el directorio local para guardar los datos.");
+          perror(
+              "No se puedoc crear el directorio local para guardar los datos.");
           return -1;
         }
       }
 
-      
       fd = open(filepath, O_CREAT | O_RDWR, 0644);
       if (fd == -1) {
         perror("Error al crear el archivo de datos.");
@@ -245,7 +261,7 @@ int init_data() {
   return 0;
 }
 
-int save_data() { //puedo guardar toda la estructura?
+int save_data() { // puedo guardar toda la estructura?
   if (ftruncate(fd, 0) == -1) {
     perror("ftruncate");
     close(fd);
@@ -324,7 +340,6 @@ time_t parsedate(char *date) {
     struct tm *broke_date = localtime(&new_date);
     broke_date->tm_mday++;
     new_date = mktime(broke_date);
-
     return new_date;
   }
 
@@ -374,16 +389,25 @@ time_t parsedate(char *date) {
 }
 
 int main(int argc, char *argv[]) {
+  time(&today);
   task_list = malloc(sizeof(struct task_t) * task_list_size);
   if (init_data() == -1) {
     free(task_list);
     return -1;
   }
 
-  switch (argc) {
+  switch (argc) { // errores
   case 1:
-    print_tasks(task_list);
+    print_tasks_deadline(task_list, today);
     break;
+  case 2:
+    if (strcmp(argv[1], "-l") == 0) {
+      print_tasks(task_list);
+    } else {
+      printf("todoc -l"
+             "todoc -r <id>"
+             "todoc -t <titulo> <comentario> -d <dd-mm-yyyy>");
+    }
   case 3:
     if (strcmp(argv[1], "-t") == 0) {
       create_task(argv[2], NULL, -1);
@@ -410,7 +434,8 @@ int main(int argc, char *argv[]) {
     create_task(argv[2], argv[3], parsedate(argv[5]));
     break;
   default:
-    printf("todoc -r <id>"
+    printf("todoc -l"
+           "todoc -r <id>"
            "todoc -t <titulo> <comentario> -d <dd-mm-yyyy>");
   }
 
