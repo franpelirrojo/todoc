@@ -30,7 +30,6 @@ struct task_t {
 };
 
 static int fd;
-static time_t today;
 static unsigned short task_count = 0;
 static unsigned short task_list_size = DEFAULT_SIZE;
 static struct task_t *task_list = NULL;
@@ -58,9 +57,9 @@ void print_task_list(struct task_t *task_list) {
   }
 }
 
-void print_tasks_deadline(struct task_t *task_list, time_t deadline) {
+void print_tasks_deadline(struct task_t *task_list) {
   for (int i = 0; i < task_count; i++) {
-    if (task_list[i].date >= deadline || task_list[i].date == -1) {
+    if (istoday(task_list[i].date) == 0 || task_list[i].date == -1) {
       print_task(task_list[i], i);
     }
   }
@@ -84,6 +83,18 @@ void delete_task(int index) {
   }
 
   task_count--;
+}
+
+void clear_task_list() {
+  for (int i = 0; i < task_count; i++) {
+    free(task_list[i].title);
+    task_list[i].title = NULL;
+    free(task_list[i].content);
+    task_list[i].content = NULL;
+    task_list[i].date = -1;
+  }
+
+  task_count=0;
 }
 
 bool create_task(char *title, char *content, time_t date) {
@@ -390,11 +401,6 @@ time_t parsedate(char *date) {
 }
 
 int main(int argc, char *argv[]) {
-  if (time(&today) == -1) {
-    perror("time");
-    return -1;
-  }
-
   task_list = malloc(sizeof(struct task_t) * task_list_size);
   if (init_data() == -1) {
     free(task_list);
@@ -403,11 +409,13 @@ int main(int argc, char *argv[]) {
 
   switch (argc) { // errores
   case 1:
-    print_tasks_deadline(task_list, today);
+    print_tasks_deadline(task_list);
     break;
   case 2:
     if (strcmp(argv[1], "-l") == 0) {
       print_task_list(task_list);
+    } else if (strcmp(argv[1], "-ra") == 0) {
+      clear_task_list(); 
     } else {
       printf("todoc -l"
              "todoc -r <id>"
