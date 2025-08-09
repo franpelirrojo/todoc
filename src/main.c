@@ -10,6 +10,8 @@
 #include <time.h>
 #include <unistd.h>
 
+#include "bttrtime.h"
+
 #define VERSION 1
 #define DEFAULT_SIZE 10
 #define LOCAL_PATH ".local/share/todoc"
@@ -58,7 +60,7 @@ void print_task_list(struct task_t *task_list) {
 
 void print_tasks_deadline(struct task_t *task_list, time_t deadline) {
   for (int i = 0; i < task_count; i++) {
-    if (task_list[i].date > deadline || task_list[i].date == -1) {
+    if (task_list[i].date >= deadline || task_list[i].date == -1) {
       print_task(task_list[i], i);
     }
   }
@@ -73,10 +75,12 @@ void delete_task(int index) {
   task_list[index].title = NULL;
   free(task_list[index].content);
   task_list[index].content = NULL;
+  task_list[index].date = -1;
 
   for (int i = index; i < task_count; i++) {
     task_list[i].title = task_list[i + 1].title;
     task_list[i].content = task_list[i + 1].content;
+    task_list[i].date = task_list[i + 1].date;
   }
 
   task_count--;
@@ -386,7 +390,11 @@ time_t parsedate(char *date) {
 }
 
 int main(int argc, char *argv[]) {
-  time(&today);
+  if (time(&today) == -1) {
+    perror("time");
+    return -1;
+  }
+
   task_list = malloc(sizeof(struct task_t) * task_list_size);
   if (init_data() == -1) {
     free(task_list);

@@ -3,13 +3,26 @@
     "arguments": [
       "/usr/bin/gcc",
       "-c",
-      "-std=gnu99",
+      "-Iinclude",
       "-o",
-      "todoc",
-      "./src/main.c"
+      "obj/bttrtime.o",
+      "src/bttrtime.c"
+    ],
+    "directory": "/home/franpelirrojo/code/todoc",
+    "file": "/home/franpelirrojo/code/todoc/src/bttrtime.c",
+    "output": "/home/franpelirrojo/code/todoc/obj/bttrtime.o"
+  },
+  {
+    "arguments": [
+      "/usr/bin/gcc",
+      "-c",
+      "-Iinclude",
+      "-o",
+      "obj/main.o",
+      "src/main.c"
     ],
     "directory": "/home/franpelirrojo/code/todoc",
     "file": "/home/franpelirrojo/code/todoc/src/main.c",
-    "output": "/home/franpelirrojo/code/todoc/todoc"
+    "output": "/home/franpelirrojo/code/todoc/obj/main.o"
   }
 ]
