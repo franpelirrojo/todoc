@@ -23,6 +23,8 @@ struct task_file_header_t {
   unsigned short count;
 };
 
+#define TODOC_NO_DATE 0
+
 struct task_t {
   char *title;
   char *content;
@@ -43,7 +45,7 @@ void print_task(struct task_t task, int counter) {
     printf("%d. %s", counter + 1, task.title);
   }
 
-  if (task.date != -1) {
+  if (task.date != TODOC_NO_DATE) {
     strftime(time, sizeof(time), "%F", localtime(&task.date));
     printf(" %s\n", time);
   } else {
@@ -57,9 +59,16 @@ void print_task_list(struct task_t *task_list) {
   }
 }
 
-void print_tasks_deadline(struct task_t *task_list) {
+void print_tasks_deadline(struct task_t *task_list, time_t deadline) {
+  if (deadline == TODOC_NO_DATE) {
+     if (time(&deadline) == -1) {
+      perror("time");
+      return;
+    }
+  }
+
   for (int i = 0; i < task_count; i++) {
-    if (istoday(task_list[i].date) == 0 || task_list[i].date == -1) {
+    if (datecmp(task_list[i].date, deadline) == 0 || datecmp(task_list[i].date, deadline) == 1) {
       print_task(task_list[i], i);
     }
   }
@@ -74,7 +83,7 @@ void delete_task(int index) {
   task_list[index].title = NULL;
   free(task_list[index].content);
   task_list[index].content = NULL;
-  task_list[index].date = -1;
+  task_list[index].date = TODOC_NO_DATE;
 
   for (int i = index; i < task_count; i++) {
     task_list[i].title = task_list[i + 1].title;
@@ -91,7 +100,7 @@ void clear_task_list() {
     task_list[i].title = NULL;
     free(task_list[i].content);
     task_list[i].content = NULL;
-    task_list[i].date = -1;
+    task_list[i].date = TODOC_NO_DATE;
   }
 
   task_count=0;
@@ -358,7 +367,7 @@ time_t parsedate(char *date) {
   int counter = 0;
   char digit[4] = "";
   int digitcounter = 0;
-  int fecha[] = {-1, -1, -1};
+  int fecha[] = {TODOC_NO_DATE, TODOC_NO_DATE, TODOC_NO_DATE};
   int fechacounter = 0;
   bool end = false;
 
@@ -386,13 +395,13 @@ time_t parsedate(char *date) {
 
   new_date = time(NULL);
   struct tm *broke_date = localtime(&new_date);
-  if (fecha[0] != -1) {
+  if (fecha[0] != TODOC_NO_DATE) {
     broke_date->tm_mday = fecha[0];
   }
-  if (fecha[1] != -1) {
+  if (fecha[1] != TODOC_NO_DATE) {
     broke_date->tm_mon = fecha[1] - 1;
   }
-  if (fecha[2] != -1) {
+  if (fecha[2] != TODOC_NO_DATE) {
     broke_date->tm_year = fecha[2] - 1900;
   }
   new_date = mktime(broke_date);
@@ -409,7 +418,7 @@ int main(int argc, char *argv[]) {
 
   switch (argc) { // errores
   case 1:
-    print_tasks_deadline(task_list);
+    print_tasks_deadline(task_list, TODOC_NO_DATE);
     break;
   case 2:
     if (strcmp(argv[1], "-l") == 0) {
@@ -423,7 +432,7 @@ int main(int argc, char *argv[]) {
     }
   case 3:
     if (strcmp(argv[1], "-t") == 0) {
-      create_task(argv[2], NULL, -1);
+      create_task(argv[2], NULL, TODOC_NO_DATE);
     } else if (strcmp(argv[1], "-r") == 0) {
       int task_id = atoi(argv[2]);
       delete_task(task_id - 1);
@@ -433,7 +442,7 @@ int main(int argc, char *argv[]) {
     if (strcmp(argv[3], "-d") == 0) {
       create_task(argv[2], NULL, parsedate(NULL));
     } else {
-      create_task(argv[2], argv[3], -1); // TODO: Permitir varios
+      create_task(argv[2], argv[3], TODOC_NO_DATE); // TODO: Permitir varios
     }
     break;
   case 5:
