@@ -2,7 +2,7 @@ CC=gcc
 CFLAGS = -g -Wall -Wextra -Wimplicit-fallthrough -Iinclude
 
 TARGET=bin/td
-INSTALL_PATH=~/bin/todoc
+INSTALL_PATH=~/bin/td
 
 SRC = $(wildcard src/*.c)
 OBJ = $(patsubst src/%.c, obj/%.o, $(SRC))
