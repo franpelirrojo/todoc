@@ -1,15 +1,19 @@
 CC=gcc
-CFLAGS=-g
-TARGET=bin/todoc
+CFLAGS = -g -Wall -Wextra -Wimplicit-fallthrough -Iinclude
+
+TARGET=bin/td
 INSTALL_PATH=~/bin/todoc
+
 SRC = $(wildcard src/*.c)
 OBJ = $(patsubst src/%.c, obj/%.o, $(SRC))
 
+run: clean $(TARGET)
+
 $(TARGET): $(OBJ)
-	gcc -o $@ $?
+	$(CC) $(CFLAGS) -o $@ $?
 
 obj/%.o: src/%.c
-	gcc -c $< -o $@ -Iinclude
+	$(CC) $(CFLAGS) -c $< -o $@
 
 install: $(TARGET)
 	cp $(TARGET) $(INSTALL_PATH)

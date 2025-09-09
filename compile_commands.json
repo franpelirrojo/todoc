@@ -2,8 +2,12 @@
   {
     "arguments": [
       "/usr/bin/gcc",
-      "-c",
+      "-g",
+      "-Wall",
+      "-Wextra",
+      "-Wimplicit-fallthrough",
       "-Iinclude",
+      "-c",
       "-o",
       "obj/bttrtime.o",
       "src/bttrtime.c"
@@ -15,8 +19,12 @@
   {
     "arguments": [
       "/usr/bin/gcc",
-      "-c",
+      "-g",
+      "-Wall",
+      "-Wextra",
+      "-Wimplicit-fallthrough",
       "-Iinclude",
+      "-c",
       "-o",
       "obj/main.o",
       "src/main.c"
