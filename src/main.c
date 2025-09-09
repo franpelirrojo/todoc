@@ -12,18 +12,24 @@
 
 #include "bttrtime.h"
 
-#define VERSION 1
-#define DEFAULT_SIZE 10
-#define LOCAL_PATH ".local/share/todoc"
-#define SAVE_FILE "todoc.bin"
-#define LIST_SEPARATOR "»"
+//#define DEBUG
+
+#define TODOC_VERSION 1
+#define TODOC_DEFAULT_SIZE 10
+
+#ifdef DEBUG
+#define TODOC_LOCAL_PATH "./"
+#else
+#define TODOC_LOCAL_PATH ".local/share/todoc"
+#endif /* ifdef DEBUG */
+
+#define TODOC_SAVE_FILE "todoc.bin"
+#define TODOC_LIST_SEPARATOR "»"
 
 struct task_file_header_t {
   unsigned short version;
   unsigned short count;
 };
-
-#define TODOC_NO_DATE 0
 
 struct task_t {
   char *title;
@@ -31,15 +37,17 @@ struct task_t {
   time_t date;
 };
 
+#define TODOC_NO_DATE 0
+
 static int fd;
 static unsigned short task_count = 0;
-static unsigned short task_list_size = DEFAULT_SIZE;
+static unsigned short task_list_size = TODOC_DEFAULT_SIZE;
 static struct task_t *task_list = NULL;
 
 void print_task(struct task_t task, int counter) {
   char time[80];
   if (task.content != NULL) {
-    printf("%d. %s %s %s", counter + 1, task.title, LIST_SEPARATOR,
+    printf("%d. %s %s %s", counter + 1, task.title, TODOC_LIST_SEPARATOR,
            task.content);
   } else {
     printf("%d. %s", counter + 1, task.title);
@@ -61,14 +69,15 @@ void print_task_list(struct task_t *task_list) {
 
 void print_tasks_deadline(struct task_t *task_list, time_t deadline) {
   if (deadline == TODOC_NO_DATE) {
-     if (time(&deadline) == -1) {
+    if (time(&deadline) == -1) {
       perror("time");
       return;
     }
   }
 
   for (int i = 0; i < task_count; i++) {
-    if (datecmp(task_list[i].date, deadline) == 0 || datecmp(task_list[i].date, deadline) == 1) {
+    if (datecmp(task_list[i].date, deadline) == 0 ||
+        datecmp(task_list[i].date, deadline) == 1) {
       print_task(task_list[i], i);
     }
   }
@@ -103,13 +112,14 @@ void clear_task_list() {
     task_list[i].date = TODOC_NO_DATE;
   }
 
-  task_count=0;
+  task_count = 0;
 }
 
 bool create_task(char *title, char *content, time_t date) {
   if (task_count >= task_list_size) {
-    struct task_t *temp = realloc(
-        task_list, sizeof(struct task_t) * (task_list_size + DEFAULT_SIZE));
+    struct task_t *temp =
+        realloc(task_list,
+                sizeof(struct task_t) * (task_list_size + TODOC_DEFAULT_SIZE));
     if (temp == NULL) {
       perror("realloc");
       return false;
@@ -150,12 +160,12 @@ int init_data() {
   char *home = getenv("HOME");
   if (home != NULL) {
     int n;
-    n = snprintf(dirpath, sizeof(dirpath), "%s/%s", home, LOCAL_PATH);
+    n = snprintf(dirpath, sizeof(dirpath), "%s/%s", home, TODOC_LOCAL_PATH);
     if (n < 0 || n > sizeof(dirpath)) {
       perror("Se truncó el path al directorio de guardado.");
       return -1;
     }
-    n = snprintf(filepath, sizeof(filepath), "%s/%s", dirpath, SAVE_FILE);
+    n = snprintf(filepath, sizeof(filepath), "%s/%s", dirpath, TODOC_SAVE_FILE);
     if (n < 0 || n > sizeof(filepath)) {
       perror("Se truncó el path al archivo de guardado.");
       return -1;
@@ -197,11 +207,11 @@ int init_data() {
     return -1;
   }
 
-  if (header.version != VERSION) {
+  if (header.version != TODOC_VERSION) {
     fprintf(stderr,
             "No es la versión correcta.\nVersón del programa %d. Versión "
             "del fichero %d\n",
-            VERSION, header.version);
+            TODOC_VERSION, header.version);
     return -1;
   }
 
@@ -295,7 +305,7 @@ int save_data() { // puedo guardar toda la estructura?
     return -1;
   }
 
-  struct task_file_header_t header = {VERSION, task_count};
+  struct task_file_header_t header = {TODOC_VERSION, task_count};
   if (write(fd, &header, sizeof(struct task_file_header_t)) == -1) {
     perror("write");
     close(fd);
@@ -416,49 +426,49 @@ int main(int argc, char *argv[]) {
     return -1;
   }
 
-  switch (argc) { // errores
-  case 1:
+  if (argc == 1) {
     print_tasks_deadline(task_list, TODOC_NO_DATE);
-    break;
-  case 2:
-    if (strcmp(argv[1], "-l") == 0) {
+  }
+
+  int c;
+  time_t taskdate = TODOC_NO_DATE;
+  bool end = false;
+
+  while ((c = getopt(argc, argv, ":d::r:l")) != -1 && !end) {
+    switch (c) {
+    case 'l':
       print_task_list(task_list);
-    } else if (strcmp(argv[1], "-ra") == 0) {
-      clear_task_list(); 
-    } else {
-      printf("todoc -l"
-             "todoc -r <id>"
-             "todoc -t <titulo> <comentario> -d <dd-mm-yyyy>");
+      end = true;
+      break;
+    case 'r':
+      if (strcmp(optarg, "a")) {
+        clear_task_list();
+      } else {
+        delete_task(atoi(optarg) - 1);
+      }
+      end = true;
+      break;
+    case 'd':
+      if (optarg != 0) {
+        taskdate = parsedate(optarg);
+      } else {
+        taskdate = parsedate(NULL);
+      }
+      end = true;
+      break;
+    case '?':
+      printf("Error: Opción desconocida: -%c.\n", optopt);
+      break;
+    case ':':
+      printf("Error: Falta opción: -%c.\n", optopt);
+      break;
     }
-  case 3:
-    if (strcmp(argv[1], "-t") == 0) {
-      create_task(argv[2], NULL, TODOC_NO_DATE);
-    } else if (strcmp(argv[1], "-r") == 0) {
-      int task_id = atoi(argv[2]);
-      delete_task(task_id - 1);
-    }
-    break;
-  case 4:
-    if (strcmp(argv[3], "-d") == 0) {
-      create_task(argv[2], NULL, parsedate(NULL));
-    } else {
-      create_task(argv[2], argv[3], TODOC_NO_DATE); // TODO: Permitir varios
-    }
-    break;
-  case 5:
-    if (strcmp(argv[4], "-d") == 0) {
-      create_task(argv[2], argv[3], parsedate(NULL));
-    } else {
-      create_task(argv[2], NULL, parsedate(argv[4]));
-    }
-    break;
-  case 6:
-    create_task(argv[2], argv[3], parsedate(argv[5]));
-    break;
-  default:
-    printf("todoc -l"
-           "todoc -r <id>"
-           "todoc -t <titulo> <comentario> -d <dd-mm-yyyy>");
+  }
+
+  if ((argc - optind) >= 2) {
+    create_task(argv[optind], argv[optind+1], taskdate);
+  } else if (argc - optind > 0){
+    create_task(argv[optind], NULL, taskdate);
   }
 
   if (save_data() == -1) {
