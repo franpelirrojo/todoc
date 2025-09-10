@@ -12,11 +12,10 @@
 
 #include "bttrtime.h"
 
-//#define DEBUG
-
 #define TODOC_VERSION 1
 #define TODOC_DEFAULT_SIZE 10
 
+//#define DEBUG
 #ifdef DEBUG
 #define TODOC_LOCAL_PATH "./"
 #else
@@ -84,9 +83,7 @@ void print_tasks_deadline(struct task_t *task_list, time_t deadline) {
 }
 
 void delete_task(int index) {
-  if (task_count == 0) {
-    return;
-  }
+  if (task_count == 0) return;
 
   free(task_list[index].title);
   task_list[index].title = NULL;
@@ -104,6 +101,8 @@ void delete_task(int index) {
 }
 
 void clear_task_list() {
+  if (task_count == 0) return;
+
   for (int i = 0; i < task_count; i++) {
     free(task_list[i].title);
     task_list[i].title = NULL;
@@ -441,10 +440,13 @@ int main(int argc, char *argv[]) {
       end = true;
       break;
     case 'r':
-      if (strcmp(optarg, "a")) {
+      if (strcmp(optarg, "a") == 0) {
+        printf("borrar todo por argumento: %s\n", optarg);
         clear_task_list();
       } else {
-        delete_task(atoi(optarg) - 1);
+        int integer = atoi(optarg);
+        printf("borrar la tarea: %d\n", integer);
+        delete_task(integer - 1);
       }
       end = true;
       break;
