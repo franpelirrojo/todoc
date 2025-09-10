@@ -15,9 +15,12 @@ $(TARGET): $(OBJ)
 obj/%.o: src/%.c
 	$(CC) $(CFLAGS) -c $< -o $@
 
-install: $(TARGET)
+install: run 
 	cp $(TARGET) $(INSTALL_PATH)
 
 clean:
 	rm -f obj/*.o
 	rm -f bin/*
+
+test:
+	./test.sh
